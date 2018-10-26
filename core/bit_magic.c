@@ -29,9 +29,9 @@ unsigned hamming_weight(unsigned x) {
  * and the C implementation found here are provided by "harold" at
  * https://stackoverflow.com/a/28283007
  *
- *      3.14 805306368     0.00     0.00  compress_linear_hd
+ *      4.93 805306369     0.00     0.00  compress_linear_hd
  *     42.60 805306368     0.00     0.00  compress_branch_hd
- *      3.27 805306369     0.00     0.00  compress_with_cached_masks (+ 0.12 overhead from caching)
+ *      3.27 805306369     0.00     0.00  compress_with_cached_masks (+ < 0.2 overhead from caching)
  */
 
 
@@ -91,7 +91,6 @@ unsigned *cache_extraction_masks(unsigned mask) {
     unsigned shift_on_result = 0;
     unsigned cmsp_index;
     unsigned hit;
-    
     
     while (mask) {
         if (mask & 1) {
