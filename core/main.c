@@ -2,30 +2,12 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <assert.h>
-#include "bit_ext.h"
+#include "bit_magic.h"
 
 #define BYTE_SIZE CHAR_BIT
 #define SUCCESS_CODE 0
 #define ERROR_CODE 1
 
-void print_bits(unsigned x) {
-    int i;
-    for(i=BYTE_SIZE*sizeof(unsigned)-1; i>=0; i--) {
-        (x & (1 << i)) ? putchar('1') : putchar('0');
-    };
-    printf("\n");
-}
-
-/* Counts the number of bits set to 1 in the binary representation of n. */
-/* StackOverflow Answer https://stackoverflow.com/a/11816547 */
-unsigned hamming_weight(unsigned x) {
-    x = (x & 0x55555555) + ((x >> 1) & 0x55555555);
-    x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
-    x = (x & 0x0F0F0F0F) + ((x >> 4) & 0x0F0F0F0F);
-    x = (x & 0x00FF00FF) + ((x >> 8) & 0x00FF00FF);
-    x = (x & 0x0000FFFF) + ((x >> 16)& 0x0000FFFF);
-    return x;
-}
 
 struct unsigned_matrix {
     unsigned rows;  // number of rows
@@ -46,8 +28,12 @@ struct unsigned_matrix *pipeline(unsigned L, unsigned V, unsigned *parent_masks)
     unsigned *local_strat_sizes = malloc (sizeof(unsigned) * V);
     unsigned global_strat_size = 0;
 
-    for (unsigned v = 0; v < V; v++) {
+    unsigned **local_cmsp = malloc( sizeof(unsigned *) * V );
+    
+    unsigned v;
+    for (v = 0; v < V; v++) {
        global_strat_size += (local_strat_sizes[v] = 1 << hamming_weight(parent_masks[v]));
+       local_cmsp[v] = cache_extraction_masks(parent_masks[v]);
     }
     
     // We need to ensure that each global strategy can be encoded in a single unsigned.
@@ -57,6 +43,7 @@ struct unsigned_matrix *pipeline(unsigned L, unsigned V, unsigned *parent_masks)
         fprintf( stderr, "The number of global strategies is too large (> %i).\n", max_num_strats);
         return NULL;
     }
+
 
     unsigned num_strats = (1 << global_strat_size);
     unsigned num_worlds = (1 << L);
@@ -89,8 +76,10 @@ struct unsigned_matrix *pipeline(unsigned L, unsigned V, unsigned *parent_masks)
             scr_strat = cur_strat;
             
             for (cur_variable = L; cur_variable < L + V; cur_variable++) { // start by validating the L-th bit of cur_model
-
-                unsigned parent_value = compress_branch_hd(cur_model, parent_masks[cur_variable]); // the valuation of the parents of cur_variable
+                
+                // get the valuation of the parents of cur_variable
+                // unsigned parent_value = compress_branch_hd(cur_model, parent_masks[cur_variable]);
+                unsigned parent_value = compress_with_cached_masks(cur_model, local_cmsp[cur_variable - L]);
                 unsigned lookup_loc = 1 << parent_value; // the location of the response of cur_variable in scr_strat
                 unsigned truth_value = scr_strat & lookup_loc; // the response of cur_variable
 
@@ -112,6 +101,11 @@ struct unsigned_matrix *pipeline(unsigned L, unsigned V, unsigned *parent_masks)
 
     // time to free all allocated memory that is not needed
     free(local_strat_sizes);
+    
+    for (v = 0; v < V; v++) {
+        free(local_cmsp[v]);
+    }
+    free(local_cmsp);
 
     struct unsigned_matrix *ret_val = malloc(sizeof(struct unsigned_matrix));
     ret_val->rows = num_worlds;
@@ -138,6 +132,24 @@ int main(void) {
     print_bits(240 >> 2);
     //_pext_u32(
 
+    printf("-----\n");
+
+    unsigned x = 0b0000000110101010001010;
+    unsigned m = 0b0000001100101001111000;
+
+    unsigned *c = cache_extraction_masks(m);
+
+    printf("cached extraction masks for m:\n");
+    unsigned *temp = c;
+    while(*temp) { print_bits(*(temp++));print_bits(*(temp++));  }
+
+    printf("compress_with_cached_masks:\n");
+    print_bits(compress_with_cached_masks(x, c));
+    printf("compress_branch_hd:\n");
+    print_bits(compress_branch_hd(x, m));
+    printf("compress_linear_hd:\n");
+    print_bits(compress_linear_hd(x, m));
+    
     printf("-----\n");
 
     /* Example Parental Data Structure */
