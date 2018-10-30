@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
 void print_bits(unsigned x) {
     int i;
     for(i=8*sizeof(unsigned)-1; i>=0; i--) {
@@ -21,7 +20,6 @@ unsigned hamming_weight(unsigned x) {
     x = (x & 0x0000FFFF) + ((x >> 16)& 0x0000FFFF);
     return x;
 }
-
 
 /**
  * compress_branch_hd, compress_linear_hd are algorithms found in 
@@ -76,9 +74,9 @@ unsigned compress_linear_hd(unsigned x, unsigned m) {
 unsigned compress_with_cached_masks(unsigned x, unsigned *cmsp) {
     unsigned result;
 
-    do {
+    while (*cmsp) {
         result |= ((x & *(cmsp++)) >> *(cmsp++));
-    } while (*cmsp); 
+    }
 
     return result;
 }
