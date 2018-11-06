@@ -1,14 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-
-void print_bits(unsigned x) {
-    int i;
-    for(i=8*sizeof(unsigned)-1; i>=0; i--) {
-        (x & (1 << i)) ? putchar('1') : putchar('0');
-    };
-    printf("\n");
-}
-
+#include "shift_masks.h"
 
 /* Counts the number of bits set to 1 in the binary representation of n. */
 /* StackOverflow Answer https://stackoverflow.com/a/11816547 */
@@ -71,37 +63,30 @@ unsigned compress_linear_hd(unsigned x, unsigned m) {
    return r;
 }
 
-unsigned compress_with_cached_masks(unsigned x, unsigned *cmsp) {
-    unsigned result;
-
-    while (*cmsp) {
-        result |= ((x & *(cmsp++)) >> *(cmsp++));
-    }
-
-    return result;
+unsigned compress_with_cached_masks(unsigned value, struct ShiftMasks *sm) {
+    return apply_shift_masks(NULL, sm, value);
 }
 
-unsigned *cache_extraction_masks(unsigned mask) {
+struct ShiftMasks cache_extraction_masks(unsigned source_mask) {
    
-    // the cached mask,shift pairs terminated with unsigned 0
-    unsigned *cmsp = malloc(sizeof(unsigned) * (2 * hamming_weight(mask) + 1));
-    unsigned shift_on_mask = 0;
-    unsigned shift_on_result = 0;
-    unsigned cmsp_index;
-    unsigned hit;
+    struct ShiftMasks sm;
+    sm.length  = hamming_weight(source_mask);
+    sm.masks   = malloc(sizeof(unsigned) * sm.length);
+    sm.shifts  = malloc(sizeof(unsigned) * sm.length);
+
+    unsigned source_shift = 0;
+    unsigned current_pair = 0;
     
-    while (mask) {
-        if (mask & 1) {
-            cmsp[cmsp_index++] = (1 << shift_on_mask); 
-            cmsp[cmsp_index++] = shift_on_mask - shift_on_result;
-            ++shift_on_result;
+    while (source_mask) {
+        if (source_mask & 1) {
+            sm.masks[current_pair] = (1 << source_shift);
+            sm.shifts[current_pair] = source_shift - current_pair;
+            ++current_pair;
         }
-        ++shift_on_mask;
-        mask >>= 1;
+        source_mask >>= 1;
+        ++source_shift;
     }
-    cmsp[cmsp_index] = 0; // ensures the cmsp is zero-terminated
 
-    return cmsp;
+    return sm;
 }
-
 
