@@ -1,4 +1,5 @@
 /* --- BV macro's --- */
+/* --- original idea: https://stackoverflow.com/a/25108449 --- */
 #define BP_1 "%c%c%c%c%c%c%c%c"
 #define BV_1(i) \
     (((i) & 0x80ll) ? '1' : '0'), \
